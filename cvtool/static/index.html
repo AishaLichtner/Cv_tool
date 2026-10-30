@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cvtool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #eef2f5; --surface: #ffffff; --sunk: #e3e9ee; --ink: #1b2836; --muted: #5a6877;
+  --line: #cfd8e0; --accent: #155e75; --accent-ink: #ffffff;
+  --ok: #2c6e49; --ok-bg: #e2f0e7; --warn: #8a5a00; --warn-bg: #f6ecd4;
+  --gap: #a3352a; --gap-bg: #f6e1de; --ins: #d4ecdc; --del: #f3d6d2;
+  --serif: "Literata", Georgia, "Times New Roman", serif;
+  --sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #121a22; --surface: #1a2530; --sunk: #233140; --ink: #e4ebf1; --muted: #9aa9b7;
+    --line: #2f3f4f; --accent: #5fb4cc; --accent-ink: #0d1820;
+    --ok: #7fc79c; --ok-bg: #1d3528; --warn: #e0b55a; --warn-bg: #3a2e14;
+    --gap: #ee8a7e; --gap-bg: #3e211d; --ins: #1f4030; --del: #4a2520;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--sans); }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; line-height: 1.25; margin: 0; }
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.25rem; margin-bottom: .6rem; }
+h3 { font-size: 1.02rem; margin: 1.4rem 0 .5rem; }
+p { margin: 0 0 .8rem; }
+a { color: var(--accent); }
+code { font-size: .9em; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+header { display: flex; align-items: baseline; gap: 1.5rem; flex-wrap: wrap; padding: 1.2rem clamp(1rem, 4vw, 2.5rem) 0; }
+header .brand { display: flex; align-items: baseline; gap: .6rem; }
+nav { display: flex; gap: .25rem; flex-wrap: wrap; flex: 1; }
+nav button { background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); font: inherit; padding: .5rem .8rem; cursor: pointer; }
+nav button[aria-selected="true"] { color: var(--ink); border-color: var(--accent); font-weight: 700; }
+.langswitch { display: flex; gap: .2rem; }
+.langswitch button { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 5px; font: inherit; font-size: .85rem; padding: .15rem .5rem; cursor: pointer; }
+.langswitch button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+main { padding: 1.5rem clamp(1rem, 4vw, 2.5rem) 3rem; }
+section[hidden], .newcont[hidden], [hidden] { display: none !important; }
+
+.split { display: grid; grid-template-columns: minmax(300px, 5fr) 7fr; gap: 2rem; align-items: start; }
+@media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 1.3rem; }
+.panel + .panel { margin-top: 1.2rem; }
+.sticky { position: sticky; top: 1rem; }
+@media (max-width: 900px) { .sticky { position: static; } }
+
+label { display: block; font-weight: 700; margin: .9rem 0 .3rem; }
+label.inline { display: flex; align-items: center; gap: .5rem; font-weight: 400; }
+textarea, input[type=text], input[type=password], select {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: .55rem .7rem; }
+textarea { resize: vertical; min-height: 9rem; }
+textarea.short { min-height: 0; }
+#jd { min-height: 22rem; }
+#factsEditor { min-height: 60vh; font: 13px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; }
+select.auto { width: auto; }
+.hint { color: var(--muted); font-size: .9rem; }
+.actions { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: 1rem; align-items: center; }
+button.primary, button.secondary { font: inherit; font-weight: 700; border-radius: 6px; padding: .55rem 1.05rem; cursor: pointer; border: 1px solid var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); }
+button.secondary { background: transparent; color: var(--accent); }
+button:disabled { opacity: .55; cursor: progress; }
+.linkbtn { background: none; border: 0; color: var(--gap); font: inherit; cursor: pointer; padding: 0; text-decoration: underline; }
+.iconbtn { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 4px; cursor: pointer; padding: 0 .45rem; font: inherit; line-height: 1.6; }
+
+.status { padding: .8rem 1rem; border-radius: 8px; background: var(--sunk); margin-bottom: 1rem; }
+.status.error { background: var(--gap-bg); color: var(--gap); }
+.status.warn { background: var(--warn-bg); color: var(--ink); }
+.empty { color: var(--muted); padding: 3rem 1rem; text-align: center; }
+.banner { margin: 0 clamp(1rem, 4vw, 2.5rem); }
+
+.cov { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+@media (max-width: 640px) { .cov { grid-template-columns: 1fr; } }
+.cov h3 { margin-top: 0; font-size: .95rem; }
+.cov .ok h3 { color: var(--ok); } .cov .warn h3 { color: var(--warn); } .cov .gap h3 { color: var(--gap); }
+.chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.chip { font-size: .88rem; padding: .15rem .55rem; border-radius: 999px; background: var(--sunk); }
+.ok .chip { background: var(--ok-bg); color: var(--ok); }
+.warn .chip { background: var(--warn-bg); color: var(--warn); }
+.gap .chip { background: var(--gap-bg); color: var(--gap); }
+.chip.must { font-weight: 700; }
+
+.proof { border-left: 3px solid var(--ok); padding: .4rem 0 .4rem 1rem; margin: 0 0 1rem; }
+.proof.sug { border-color: var(--warn); }
+.proof .id { font-size: .8rem; color: var(--muted); }
+.proof .before { color: var(--muted); }
+.proof ins { background: var(--ins); text-decoration: none; border-radius: 3px; padding: 0 2px; }
+.proof del { background: var(--del); border-radius: 3px; padding: 0 2px; }
+.proof .basis { font-size: .85rem; color: var(--muted); margin-top: .3rem; }
+.proof .basis b { color: var(--ok); font-weight: 400; }
+.qed { color: var(--ok); margin-left: .3rem; }
+ul.log { padding-left: 1.2rem; margin: 0; } ul.log li { margin-bottom: .3rem; }
+iframe.pdf { width: 100%; height: 80vh; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+pre.err { white-space: pre-wrap; background: var(--gap-bg); color: var(--ink); padding: .8rem 1rem; border-radius: 8px; font: 13px/1.5 ui-monospace, Consolas, monospace; overflow-x: auto; margin: .6rem 0 0; }
+
+.modes { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 1rem; }
+.modes button { background: var(--surface); border: 0; padding: .5rem 1rem; font: inherit; color: var(--muted); cursor: pointer; }
+.modes button.on { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+
+.card { border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; background: var(--bg); }
+.card .head { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: .5rem; align-items: end; }
+.card .head.proj { grid-template-columns: 2fr 1fr auto; }
+@media (max-width: 760px) { .card .head, .card .head.proj { grid-template-columns: 1fr 1fr; } }
+.card .head label { margin-top: 0; font-size: .85rem; }
+.card .tools { display: flex; gap: .3rem; justify-content: flex-end; }
+.bul { border-top: 1px dashed var(--line); padding: .7rem 0; display: grid; grid-template-columns: 1fr auto; gap: .6rem; }
+.bul .meta { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5rem; margin-top: .4rem; }
+@media (max-width: 760px) { .bul .meta { grid-template-columns: 1fr; } }
+.bul .meta input, .bul .meta select { font-size: .9rem; padding: .35rem .5rem; }
+.bul .side { display: flex; flex-direction: column; gap: .3rem; }
+label.mini { margin: 0; font-weight: 400; } label.mini span { display: block; font-size: .78rem; color: var(--muted); margin-bottom: .1rem; }
+.kind { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.subtabs { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.subtabs button { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: .35rem .9rem; font: inherit; cursor: pointer; color: var(--muted); }
+.subtabs button.on { border-color: var(--accent); color: var(--ink); font-weight: 700; }
+
+.rows .row { display: grid; gap: .5rem; margin-bottom: .5rem; align-items: center; }
+.rows .row.multi { border: 1px solid var(--line); border-radius: 8px; padding: .6rem; }
+.rows .row.multi .iconbtn { justify-self: start; }
+.rows .row input { font-size: .92rem; padding: .4rem .55rem; }
+
+table.skills { border-collapse: collapse; width: 100%; min-width: 640px; }
+table.skills th { text-align: left; font-size: .85rem; color: var(--muted); font-weight: 700; padding: .3rem .5rem; }
+table.skills td { padding: .3rem .5rem; border-top: 1px solid var(--line); vertical-align: middle; }
+table.skills tr.grouphead td { border-top: 2px solid var(--line); padding-top: 1rem; font-family: var(--serif); font-weight: 600; }
+table.skills select { width: auto; padding: .3rem .4rem; }
+table.skills td.c { text-align: center; }
+table.skills tr.pin td:first-child { font-weight: 700; }
+
+.checks { list-style: none; padding: 0; margin: 0; }
+.checks li { padding: .6rem 0; border-bottom: 1px solid var(--line); }
+.checks .mark { display: inline-block; width: 1.4rem; font-weight: 700; }
+.checks .yes { color: var(--ok); } .checks .no { color: var(--gap); }
+.history ul { padding: 0; } .history li { margin-bottom: 1rem; list-style: none; }
+.history .jd { color: var(--muted); font-size: .9rem; }
+details summary { cursor: pointer; font-weight: 700; }
+@media (prefers-reduced-motion: no-preference) {
+  .reveal { animation: reveal .35s ease-out; }
+  @keyframes reveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><h1>cvtool</h1><span class="hint" id="ver"></span></div>
+  <nav role="tablist">
+    <button role="tab" aria-selected="true" data-tab="tailor" data-i18n="tab_tailor"></button>
+    <button role="tab" aria-selected="false" data-tab="add" data-i18n="tab_add"></button>
+    <button role="tab" aria-selected="false" data-tab="edit" data-i18n="tab_edit"></button>
+    <button role="tab" aria-selected="false" data-tab="history" data-i18n="tab_history"></button>
+    <button role="tab" aria-selected="false" data-tab="settings" data-i18n="tab_settings"></button>
+  </nav>
+  <div class="langswitch" aria-label="Language"><button data-lang="de">DE</button><button data-lang="en">EN</button></div>
+</header>
+<div id="banners" class="banner" style="margin-top:1rem"></div>
+
+<main>
+<!-- ================= TAILOR ================= -->
+<section id="tab-tailor">
+  <div class="split">
+    <div class="panel sticky">
+      <label for="jd" data-i18n="jd_label"></label>
+      <textarea id="jd" data-i18n-ph="jd_ph"></textarea>
+      <label for="jobname"><span data-i18n="jobname"></span> <span class="hint" data-i18n="optional"></span></label>
+      <input type="text" id="jobname" data-i18n-ph="jobname_ph">
+      <label for="maxpages" data-i18n="maxpages"></label>
+      <select id="maxpages" class="auto"><option value="1" data-i18n="page1"></option><option value="2" data-i18n="page2"></option></select>
+      <label class="inline"><input type="checkbox" id="llmcheck"> <span data-i18n="llmcheck"></span></label>
+      <div class="actions"><button class="primary" id="runTailor" data-i18n="run_tailor"></button><span class="hint" id="tailorHint"></span></div>
+    </div>
+    <div id="tailorOut"><div class="empty" data-i18n="tailor_empty"></div></div>
+  </div>
+</section>
+
+<!-- ================= ADD / IMPORT ================= -->
+<section id="tab-add" hidden>
+  <div class="modes"><button data-mode="single" class="on" data-i18n="mode_single"></button><button data-mode="import" data-i18n="mode_import"></button></div>
+  <div class="split" id="addSingle">
+    <div class="panel">
+      <label for="addText" data-i18n="add_label"></label>
+      <textarea id="addText" data-i18n-ph="add_ph"></textarea>
+      <p class="hint" data-i18n="add_hint"></p>
+      <div class="actions"><button class="primary" id="runPropose" data-i18n="run_propose"></button></div>
+    </div>
+    <div id="addOut"><div class="empty" data-i18n="add_empty"></div></div>
+  </div>
+  <div class="split" id="addImport" hidden>
+    <div class="panel">
+      <h2 data-i18n="imp_title"></h2>
+      <p class="hint" data-i18n="imp_hint"></p>
+      <label for="impFile" data-i18n="imp_file"></label>
+      <input type="file" id="impFile" accept=".pdf,.tex,.txt,.md">
+      <label for="impText" data-i18n="imp_text"></label>
+      <textarea id="impText" data-i18n-ph="imp_ph"></textarea>
+      <div class="actions"><button class="primary" id="runImport" data-i18n="run_import"></button></div>
+    </div>
+    <div id="impOut"><div class="empty" data-i18n="imp_empty"></div></div>
+  </div>
+</section>
+
+<!-- ================= EDIT ================= -->
+<section id="tab-edit" hidden>
+  <div class="subtabs">
+    <button data-sub="entries" class="on" data-i18n="sub_entries"></button>
+    <button data-sub="profile" data-i18n="sub_profile"></button>
+    <button data-sub="skills" data-i18n="sub_skills"></button>
+    <button data-sub="json" data-i18n="sub_json"></button>
+  </div>
+
+  <div id="sub-entries" class="panel">
+    <h2 data-i18n="ent_title"></h2>
+    <p class="hint" data-i18n="ent_hint"></p>
+    <div id="dupBanner"></div>
+    <div id="entriesList"></div>
+    <div class="actions">
+      <button class="secondary" id="addExp" data-i18n="add_exp"></button>
+      <button class="secondary" id="addProj" data-i18n="add_proj"></button>
+    </div>
+    <div class="actions"><button class="primary" id="saveEntries" data-i18n="save"></button><span class="hint" id="entriesHint"></span></div>
+  </div>
+
+  <div id="sub-profile" class="panel" hidden>
+    <h2 data-i18n="prof_title"></h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem">
+      <div><label for="pFirst" data-i18n="first_name"></label><input type="text" id="pFirst"></div>
+      <div><label for="pLast" data-i18n="last_name"></label><input type="text" id="pLast"></div>
+    </div>
+    <h3 data-i18n="contacts"></h3><p class="hint" data-i18n="contacts_hint"></p><div class="rows" id="pContacts"></div>
+    <h3 data-i18n="education"></h3><div class="rows" id="pEdu"></div>
+    <h3 data-i18n="certs"></h3><div class="rows" id="pCerts"></div>
+    <h3 data-i18n="langs"></h3><div class="rows" id="pLangs"></div>
+    <div class="actions"><button class="primary" id="saveProfile" data-i18n="save"></button><span class="hint" id="profileHint"></span></div>
+  </div>
+
+  <div id="sub-skills" class="panel" hidden>
+    <h2 data-i18n="sk_title"></h2>
+    <p class="hint" data-i18n-html="sk_hint"></p>
+    <div style="overflow-x:auto"><table class="skills" id="skillTable"></table></div>
+    <div class="actions"><button class="primary" id="saveSkills" data-i18n="save"></button><span class="hint" id="skillsHint"></span></div>
+  </div>
+
+  <div id="sub-json" class="panel" hidden>
+    <h2>facts.json</h2>
+    <p class="hint" data-i18n="json_hint"></p>
+    <textarea id="factsEditor" spellcheck="false"></textarea>
+    <div class="actions"><button class="primary" id="saveFacts" data-i18n="save"></button><button class="secondary" id="reloadFacts" data-i18n="reload"></button><span class="hint" id="factsHint"></span></div>
+  </div>
+</section>
+
+<!-- ================= HISTORY ================= -->
+<section id="tab-history" hidden>
+  <div class="panel history"><h2 data-i18n="tab_history"></h2><div id="historyOut"></div></div>
+</section>
+
+<!-- ================= SETTINGS ================= -->
+<section id="tab-settings" hidden>
+  <div class="split">
+    <div>
+      <div class="panel">
+        <h2 data-i18n="set_title"></h2>
+        <label for="sKey" data-i18n="set_key"></label>
+        <input type="password" id="sKey" autocomplete="off">
+        <p class="hint" data-i18n-html="set_key_hint"></p>
+        <label for="sModel" data-i18n="set_model"></label>
+        <input type="text" id="sModel">
+        <label for="sPages" data-i18n="set_pages"></label>
+        <select id="sPages" class="auto"><option value="1" data-i18n="page1"></option><option value="2" data-i18n="page2"></option></select>
+        <div class="actions"><button class="primary" id="saveSettings" data-i18n="save"></button><span class="hint" id="settingsHint"></span></div>
+      </div>
+      <div class="panel">
+        <h2 data-i18n="share_title"></h2>
+        <p class="hint" data-i18n="share_hint"></p>
+        <div class="actions"><a class="primary" href="/api/export" style="text-decoration:none;font-weight:700;border-radius:6px;padding:.55rem 1.05rem;background:var(--accent);color:var(--accent-ink)" data-i18n="share_btn"></a></div>
+        <p class="hint" style="margin-top:1rem" id="dataDir"></p>
+      </div>
+    </div>
+    <div class="panel">
+      <h2 data-i18n="diag_title"></h2>
+      <p class="hint" data-i18n="diag_hint"></p>
+      <div class="actions">
+        <button class="primary" id="runDiagnose" data-i18n="diag_run"></button>
+        <button class="secondary" id="getTectonic" data-i18n="tectonic_btn"></button>
+      </div>
+      <p class="hint" data-i18n="tectonic_hint"></p>
+      <div id="setupOut" style="margin-top:1rem"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<script>
+/* ================= i18n ================= */
+const I18N = {
+de: {
+  tab_tailor: "An Stelle anpassen", tab_add: "Hinzufügen", tab_edit: "Bearbeiten", tab_history: "Frühere Versionen", tab_settings: "Einstellungen",
+  jd_label: "Stellenanzeige", jd_ph: "Hier den kompletten Text der Anzeige einfügen …", jobname: "Name für diese Version", optional: "(optional)",
+  jobname_ph: "z. B. siemens_ml_engineer", maxpages: "Maximale Länge", page1: "1 Seite", page2: "2 Seiten",
+  llmcheck: "Jede Umformulierung zusätzlich vom Modell prüfen lassen", run_tailor: "CV anpassen", working: "Wird bearbeitet …",
+  tailor_wait: "Dauert meist 20–60 Sekunden.", tailor_progress: "Anforderungen werden gelesen, Bullets ausgewählt und gegen deine Faktenbasis geprüft …",
+  tailor_empty: "Füge links eine Stellenanzeige ein. Hier erscheinen dann der angepasste CV, welche Anforderungen du abdeckst und jede Änderung mit ihrem Beleg.",
+  need_jd: "Füge zuerst eine Stellenanzeige ein.",
+  cov_title: "Welche Anforderungen du abdeckst", cov_hint: "Fett = Muss-Anforderung. Lücken wurden nicht in den CV geschrieben.",
+  cov_ok: "Stand schon drin", cov_warn: "Belegt, jetzt sichtbar", cov_gap: "Nicht belegt", none: "keine",
+  ev_title: "Könnte passen – du entscheidest", ev_hint: "Diese Anforderungen stehen so nicht in deiner Faktenbasis. Wenn eine davon auf einen Bullet wirklich zutrifft (du könntest es im Interview erklären), hak sie an. Sie wird als erlaubtes Synonym gespeichert und der CV neu angepasst.",
+  ev_applies: "trifft zu auf:", ev_apply: "Angehakte übernehmen und neu anpassen", ev_none_checked: "Hak zuerst an, was auf dich zutrifft.",
+  changed_title: "Was geändert wurde", allowed: "Erlaubt für diesen Bullet:", only_orig: "nur Originalwortlaut", no_changes: "Kein Bullet wurde umformuliert, nur ausgewählt und sortiert.",
+  log_title: "Prüfprotokoll", log_ok: "Alle Vorschläge des Modells haben die Prüfung bestanden.",
+  cv_title: "Dein CV für diese Stelle", download_pdf: "PDF herunterladen", report: "Bericht", page_s: "Seite", page_p: "Seiten",
+  pdf_failed: "Das PDF konnte nicht gebaut werden. Die .tex-Datei liegt trotzdem bereit. Unter „Einstellungen“ kannst du die Einrichtung prüfen.",
+  mode_single: "Einzelne Erfahrung", mode_import: "Ganzen CV importieren",
+  add_label: "Was hast du gemacht?", add_ph: "Einfach frei schreiben, Deutsch oder Englisch. Zum Beispiel: Persönliches Projekt im Juli 2025: Credit-Risk-Modell gebaut, …",
+  add_hint: "Je konkreter (Station oder Projekt, deine Rolle, Tools, Ergebnis), desto weniger Rückfragen. Erfunden wird nichts: Fehlendes wird nachgefragt oder weggelassen.",
+  run_propose: "Vorschlag erstellen", add_empty: "Der Vorschlag erscheint hier. Du kannst jeden Eintrag bearbeiten, bevor er gespeichert wird.",
+  add_progress: "Deine Beschreibung wird in Einträge umgewandelt …", q_title: "Ein paar Rückfragen", q_hint: "Damit nichts geraten werden muss. Leer lassen ist in Ordnung.",
+  q_send: "Antworten senden", prop_title: "Vorschlag", prop_hint: "Lies vor allem die Synonyme kritisch: Würdest du jeden dieser Begriffe im Interview vertreten?",
+  prop_nothing: "Aus der Beschreibung ließ sich nichts Neues ableiten.", bullet_for_cv: "Bullet für den CV", belongs_to: "Gehört zu",
+  new_entry: "Neue Station oder neues Projekt", skills: "Skills", synonyms: "Erlaubte Synonyme", synonyms_hint: "(diese Begriffe darf das Tool später verwenden)",
+  kind_project: "Projekt", kind_exp: "Station", name_ph: "Firma / Projektname", role_ph: "Rolle", dates_ph: "Zeitraum",
+  discard_entry: "Diesen Eintrag verwerfen", new_skills: "Neue Skills", new_skills_hint: "Nur echte Werkzeuge gehören in eine Skill-Gruppe. Tätigkeiten besser nach „Areas of Expertise“.",
+  to_expertise: "→ Areas of Expertise", discard: "Verwerfen", new_expertise: "Neue Expertise", apply_add: "In Faktenbasis übernehmen", discard_all: "Alles verwerfen",
+  discarded: "Verworfen. Nichts wurde geändert.", applied_n: "Übernommen: {n} Bullet(s). Unter „Bearbeiten“ kannst du alles nachträglich korrigieren.",
+  imp_title: "Ganzen CV importieren", imp_hint: "Lade deinen CV als PDF, LaTeX oder Text hoch oder füge den Text ein. Das Modell überträgt ihn in deine Faktenbasis, möglichst im Originalwortlaut. Danach kannst du alles unter „Bearbeiten“ korrigieren.",
+  imp_file: "Datei (PDF, .tex, .txt)", imp_text: "… oder Text einfügen", imp_ph: "CV-Text hier einfügen", run_import: "CV einlesen",
+  imp_empty: "Hier siehst du gleich, was erkannt wurde, und entscheidest, was übernommen wird.", imp_progress: "CV wird eingelesen – das kann 1–2 Minuten dauern …",
+  imp_found: "Erkannt", imp_entries: "{e} Stationen, {p} Projekte, {b} Bullets, {s} Skills", imp_mode: "Was soll übernommen werden?",
+  imp_replace: "Alles – meine Faktenbasis neu anlegen (ersetzt den bisherigen Stand)", imp_merge: "Ergänzen – nur neue Stationen/Projekte hinzufügen",
+  imp_profile: "Nur persönliche Angaben (Name, Kontakt, Ausbildung, Zertifikate, Sprachen)", imp_apply: "Übernehmen", imp_done: "Übernommen. Prüf jetzt unter „Bearbeiten“, ob alles stimmt, besonders die Synonyme.",
+  imp_confirm_replace: "Deine bisherige Faktenbasis wird ersetzt (eine Sicherung wird angelegt). Fortfahren?",
+  sub_entries: "Stationen & Projekte", sub_profile: "Profil", sub_skills: "Skills", sub_json: "Rohdaten (JSON)",
+  ent_title: "Stationen & Projekte", ent_hint: "Hier korrigierst du alles, was in deiner Faktenbasis steht: Texte, Zuordnung, Reihenfolge. Änderungen werden erst mit „Speichern“ übernommen.",
+  dup_found: "Es gibt mehrere Einträge mit demselben Namen: {names}. Meist ist das ein Eintrag, der in Einzelteile zerlegt wurde.", dup_merge: "Zusammenführen",
+  company: "Firma", project_name: "Projektname", title: "Rolle", dates: "Zeitraum", location: "Ort", bullets: "Bullets",
+  move_to: "Verschieben nach …", del_entry: "Eintrag löschen", del_entry_confirm: "Diesen Eintrag mit allen Bullets löschen?", add_bullet: "+ Bullet",
+  add_exp: "+ Neue Station", add_proj: "+ Neues Projekt", save: "Speichern", saved: "Gespeichert.", reload: "Neu laden",
+  up: "nach oben", down: "nach unten", delete: "löschen", kind_label_exp: "Station", kind_label_proj: "Projekt", no_entries: "Noch keine Einträge. Importiere deinen CV unter „Hinzufügen → Ganzen CV importieren“.",
+  comma_hint: "durch Komma getrennt",
+  prof_title: "Persönliche Angaben", first_name: "Vorname", last_name: "Nachname", contacts: "Kontakt", contacts_hint: "Text und optional ein Link, z. B. „LinkedIn“ + URL oder E-Mail + mailto:…",
+  education: "Ausbildung", certs: "Zertifikate", langs: "Sprachen", add_row: "+ Zeile",
+  f_text: "Text", f_url: "Link", f_school: "Hochschule", f_degree: "Abschluss", f_location: "Ort", f_note_prefix: "Zusatz-Label (z. B. Thesis:)", f_note: "Zusatz", f_note_url: "Link zum Zusatz",
+  f_name: "Name", f_level: "Niveau",
+  sk_title: "Skills", sk_hint: "<b>Immer zeigen</b>: steht in jeder Version vorne in seiner Gruppe und wird nie gekürzt. <b>Nur bei Bedarf</b>: erscheint nur, wenn eine Stelle danach fragt. Tätigkeiten wie „Data Migration“ sind keine Tools – verschieb sie nach „Areas of Expertise“.",
+  sk_skill: "Skill", sk_group: "Gruppe", sk_pin: "Immer zeigen", sk_hide: "Nur bei Bedarf", sk_order: "Reihenfolge", sk_moved: "{n} nach Areas of Expertise verschoben.",
+  json_hint: "Für Fortgeschrittene: die komplette Faktenbasis. Vor jedem Speichern wird eine Sicherung (facts.json.bak) angelegt.",
+  history_empty: "Noch keine angepassten Versionen.",
+  set_title: "Einstellungen", set_key: "Anthropic-API-Key", set_key_hint: "Bekommst du unter <a href=\"https://console.anthropic.com\" target=\"_blank\">console.anthropic.com</a> → API Keys (Guthaben nötig, ein Durchlauf kostet nur Cent). Der Key wird nur auf diesem Computer gespeichert, im Datenordner.",
+  set_key_set: "gesetzt: {h} – leer lassen, um ihn zu behalten", set_model: "Modell", set_pages: "Standardlänge",
+  share_title: "Mit Freunden teilen", share_hint: "Lädt das Programm als ZIP herunter – ohne deine persönlichen Daten, ohne deinen API-Key. Deine Freunde entpacken es, starten start.bat (Windows) bzw. start.command (Mac), tragen ihren eigenen API-Key ein und importieren ihren CV.",
+  share_btn: "Programm zum Teilen herunterladen", data_dir: "Deine persönlichen Daten liegen in: {d}",
+  diag_title: "Einrichtung prüfen", diag_hint: "Prüft LaTeX, Schriften, API-Key und Profil und baut testweise deinen Standard-CV.", diag_run: "Jetzt prüfen", diag_test: "Test-CV",
+  tectonic_btn: "LaTeX-Engine herunterladen (Tectonic)", tectonic_hint: "Nur nötig, wenn kein LaTeX installiert ist (~20 MB). Beim ersten Bauen lädt Tectonic zusätzlich einmalig Pakete aus dem Internet.",
+  tectonic_ok: "Tectonic installiert: {p}",
+  ban_key: "Als Erstes: Trag unter „Einstellungen“ deinen API-Key ein.", ban_import: "Noch keine Daten: Importiere deinen CV unter „Hinzufügen → Ganzen CV importieren“.", ban_profile: "Deine persönlichen Angaben fehlen. Ergänze sie unter „Bearbeiten → Profil“ oder importiere sie aus deinem CV („nur persönliche Angaben“).",
+  server_down: "Server antwortet nicht (HTTP {s}). Läuft app.py noch?",
+},
+en: {
+  tab_tailor: "Tailor to a job", tab_add: "Add", tab_edit: "Edit", tab_history: "History", tab_settings: "Settings",
+  jd_label: "Job ad", jd_ph: "Paste the full text of the job ad here …", jobname: "Name for this version", optional: "(optional)",
+  jobname_ph: "e.g. siemens_ml_engineer", maxpages: "Maximum length", page1: "1 page", page2: "2 pages",
+  llmcheck: "Have the model double-check every rephrasing", run_tailor: "Tailor CV", working: "Working …",
+  tailor_wait: "Usually takes 20–60 seconds.", tailor_progress: "Reading the requirements, selecting bullets and checking them against your fact base …",
+  tailor_empty: "Paste a job ad on the left. The tailored CV, your coverage of the requirements and every change with its evidence will appear here.",
+  need_jd: "Paste a job ad first.",
+  cov_title: "Which requirements you cover", cov_hint: "Bold = must-have. Gaps were not written into the CV.",
+  cov_ok: "Already in the CV", cov_warn: "Backed, now visible", cov_gap: "Not backed", none: "none",
+  ev_title: "Might fit – your call", ev_hint: "These requirements are not in your fact base as such. If one truly applies to a bullet (you could explain it in an interview), tick it. It is saved as an allowed synonym and the CV is tailored again.",
+  ev_applies: "applies to:", ev_apply: "Apply ticked items and tailor again", ev_none_checked: "Tick what applies to you first.",
+  changed_title: "What was changed", allowed: "Allowed for this bullet:", only_orig: "original wording only", no_changes: "No bullet was rephrased, only selected and ordered.",
+  log_title: "Check log", log_ok: "All model suggestions passed the check.",
+  cv_title: "Your CV for this job", download_pdf: "Download PDF", report: "Report", page_s: "page", page_p: "pages",
+  pdf_failed: "The PDF could not be built. The .tex file is still available. Check your setup under “Settings”.",
+  mode_single: "Single experience", mode_import: "Import whole CV",
+  add_label: "What did you do?", add_ph: "Just write freely. For example: Personal project in July 2025: built a credit risk model, …",
+  add_hint: "The more concrete (position or project, your role, tools, outcome), the fewer follow-up questions. Nothing is invented: missing details are asked for or left out.",
+  run_propose: "Create proposal", add_empty: "The proposal appears here. You can edit every entry before it is saved.",
+  add_progress: "Turning your description into entries …", q_title: "A few questions", q_hint: "So nothing has to be guessed. Leaving them empty is fine.",
+  q_send: "Send answers", prop_title: "Proposal", prop_hint: "Read the synonyms critically: would you stand behind each of these terms in an interview?",
+  prop_nothing: "Nothing new could be derived from the description.", bullet_for_cv: "Bullet for the CV", belongs_to: "Belongs to",
+  new_entry: "New position or new project", skills: "Skills", synonyms: "Allowed synonyms", synonyms_hint: "(terms the tool may use later)",
+  kind_project: "Project", kind_exp: "Position", name_ph: "Company / project name", role_ph: "Role", dates_ph: "Dates",
+  discard_entry: "Discard this entry", new_skills: "New skills", new_skills_hint: "Only real tools belong in a skill group. Activities fit better under “Areas of Expertise”.",
+  to_expertise: "→ Areas of Expertise", discard: "Discard", new_expertise: "New expertise", apply_add: "Add to fact base", discard_all: "Discard all",
+  discarded: "Discarded. Nothing was changed.", applied_n: "Added: {n} bullet(s). You can correct everything under “Edit”.",
+  imp_title: "Import whole CV", imp_hint: "Upload your CV as PDF, LaTeX or text, or paste the text. The model transfers it into your fact base, as close to the original wording as possible. You can then correct everything under “Edit”.",
+  imp_file: "File (PDF, .tex, .txt)", imp_text: "… or paste text", imp_ph: "Paste CV text here", run_import: "Read CV",
+  imp_empty: "You will see what was recognised here and decide what to keep.", imp_progress: "Reading your CV – this can take 1–2 minutes …",
+  imp_found: "Recognised", imp_entries: "{e} positions, {p} projects, {b} bullets, {s} skills", imp_mode: "What should be imported?",
+  imp_replace: "Everything – create my fact base from scratch (replaces the current one)", imp_merge: "Add – only add new positions/projects",
+  imp_profile: "Personal details only (name, contact, education, certifications, languages)", imp_apply: "Import", imp_done: "Imported. Now check under “Edit” that everything is right, especially the synonyms.",
+  imp_confirm_replace: "Your current fact base will be replaced (a backup is kept). Continue?",
+  sub_entries: "Positions & projects", sub_profile: "Profile", sub_skills: "Skills", sub_json: "Raw data (JSON)",
+  ent_title: "Positions & projects", ent_hint: "Correct anything in your fact base here: texts, assignment, order. Changes are only kept when you click “Save”.",
+  dup_found: "Several entries share the same name: {names}. Usually that is one entry that was split into pieces.", dup_merge: "Merge",
+  company: "Company", project_name: "Project name", title: "Role", dates: "Dates", location: "Location", bullets: "Bullets",
+  move_to: "Move to …", del_entry: "Delete entry", del_entry_confirm: "Delete this entry with all its bullets?", add_bullet: "+ Bullet",
+  add_exp: "+ New position", add_proj: "+ New project", save: "Save", saved: "Saved.", reload: "Reload",
+  up: "up", down: "down", delete: "delete", kind_label_exp: "Position", kind_label_proj: "Project", no_entries: "No entries yet. Import your CV under “Add → Import whole CV”.",
+  comma_hint: "comma-separated",
+  prof_title: "Personal details", first_name: "First name", last_name: "Last name", contacts: "Contact", contacts_hint: "Text and an optional link, e.g. “LinkedIn” + URL or e-mail + mailto:…",
+  education: "Education", certs: "Certifications", langs: "Languages", add_row: "+ Row",
+  f_text: "Text", f_url: "Link", f_school: "University", f_degree: "Degree", f_location: "Location", f_note_prefix: "Extra label (e.g. Thesis:)", f_note: "Extra", f_note_url: "Extra link",
+  f_name: "Name", f_level: "Level",
+  sk_title: "Skills", sk_hint: "<b>Always show</b>: appears first in its group in every version and is never trimmed. <b>Only when needed</b>: appears only if a job asks for it. Activities like “Data Migration” are not tools – move them to “Areas of Expertise”.",
+  sk_skill: "Skill", sk_group: "Group", sk_pin: "Always show", sk_hide: "Only when needed", sk_order: "Order", sk_moved: "{n} moved to Areas of Expertise.",
+  json_hint: "Advanced: the complete fact base. A backup (facts.json.bak) is created before every save.",
+  history_empty: "No tailored versions yet.",
+  set_title: "Settings", set_key: "Anthropic API key", set_key_hint: "Get it at <a href=\"https://console.anthropic.com\" target=\"_blank\">console.anthropic.com</a> → API Keys (needs credit; one run costs cents). The key is stored only on this computer, in the data folder.",
+  set_key_set: "set: {h} – leave empty to keep it", set_model: "Model", set_pages: "Default length",
+  share_title: "Share with friends", share_hint: "Downloads the program as a ZIP – without your personal data and without your API key. Your friends unzip it, run start.bat (Windows) or start.command (Mac), enter their own API key and import their CV.",
+  share_btn: "Download program for sharing", data_dir: "Your personal data is stored in: {d}",
+  diag_title: "Check setup", diag_hint: "Checks LaTeX, fonts, API key and profile, and builds your default CV as a test.", diag_run: "Check now", diag_test: "Test CV",
+  tectonic_btn: "Download LaTeX engine (Tectonic)", tectonic_hint: "Only needed if no LaTeX is installed (~20 MB). On the first build Tectonic also downloads packages once from the internet.",
+  tectonic_ok: "Tectonic installed: {p}",
+  ban_key: "First step: enter your API key under “Settings”.", ban_import: "No data yet: import your CV under “Add → Import whole CV”.", ban_profile: "Your personal details are missing. Add them under “Edit → Profile” or import them from your CV (“personal details only”).",
+  server_down: "Server not responding (HTTP {s}). Is app.py still running?",
+}};
+let LANG = "de";
+const t = (k, v = {}) => (I18N[LANG][k] ?? I18N.de[k] ?? k).replace(/\{(\w+)\}/g, (_, x) => v[x] ?? "");
+function applyI18n() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach(el => el.textContent = t(el.dataset.i18n));
+  document.querySelectorAll("[data-i18n-html]").forEach(el => el.innerHTML = t(el.dataset.i18nHtml));
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => el.placeholder = t(el.dataset.i18nPh));
+  document.querySelectorAll(".langswitch button").forEach(b => b.classList.toggle("on", b.dataset.lang === LANG));
+}
+
+/* ================= helpers ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const normName = s => String(s || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, " ").trim();
+const splitList = s => String(s || "").split(",").map(x => x.trim()).filter(Boolean);
+async function call(method, url, body) {
+  const r = await fetch(url, {method, headers: {"Content-Type": "application/json"}, body: body ? JSON.stringify(body) : undefined});
+  const data = await r.json().catch(() => ({error: t("server_down", {s: r.status})}));
+  if (!r.ok || data.error) throw new Error(data.error || `HTTP ${r.status}`);
+  return data;
+}
+function busy(btn, on, label) {
+  btn.disabled = on;
+  if (on) { btn.dataset.label = btn.textContent; btn.textContent = label || t("working"); }
+  else if (btn.dataset.label) btn.textContent = btn.dataset.label;
+}
+const errBox = m => `<div class="status error">${esc(m)}</div>`;
+function flash(el, msg) { el.textContent = msg; setTimeout(() => { if (el.textContent === msg) el.textContent = ""; }, 4000); }
+
+/* ================= tabs, language, state ================= */
+let STATE = {};
+function showTab(name) {
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x.dataset.tab === name));
+  document.querySelectorAll("main > section").forEach(s => s.hidden = s.id !== "tab-" + name);
+  if (name === "edit") showSub(currentSub);
+  if (name === "history") loadHistory();
+  if (name === "settings") loadSettings();
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+document.querySelectorAll(".langswitch button").forEach(b => b.addEventListener("click", async () => {
+  LANG = b.dataset.lang; applyI18n(); await call("PUT", "/api/settings", {lang: LANG}).catch(() => {});
+  refreshState();
+}));
+async function refreshState() {
+  try { STATE = await call("GET", "/api/state"); } catch (e) { $("#banners").innerHTML = errBox(e.message); return; }
+  LANG = STATE.lang; applyI18n();
+  $("#ver").textContent = "v" + STATE.version;
+  $("#maxpages").value = String(STATE.max_pages);
+  const b = [];
+  if (!STATE.has_key) b.push(t("ban_key"));
+  if (!STATE.has_entries) b.push(t("ban_import"));
+  else if (!STATE.has_profile) b.push(t("ban_profile"));
+  $("#banners").innerHTML = b.map(x => `<div class="status warn">${esc(x)}</div>`).join("");
+}
+
+/* word diff */
+function wordDiff(a, b) {
+  const A = a.split(/(\s+)/), B = b.split(/(\s+)/), n = A.length, m = B.length;
+  const L = Array.from({length: n + 1}, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  let i = 0, j = 0, before = "", after = "";
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) { before += esc(A[i]); after += esc(B[j]); i++; j++; }
+    else if (j < m && (i >= n || L[i][j + 1] >= L[i + 1][j])) { after += /\S/.test(B[j]) ? `<ins>${esc(B[j])}</ins>` : esc(B[j]); j++; }
+    else { before += /\S/.test(A[i]) ? `<del>${esc(A[i])}</del>` : esc(A[i]); i++; }
+  }
+  const merge = (h, tg) => h.replace(new RegExp(`</${tg}>(\\s*)<${tg}>`, "g"), "$1");
+  return {before: merge(before, "del"), after: merge(after, "ins")};
+}
+
+/* ================= TAILOR ================= */
+$("#runTailor").addEventListener("click", async () => {
+  const btn = $("#runTailor"), out = $("#tailorOut"), jd = $("#jd").value.trim();
+  if (!jd) { out.innerHTML = errBox(t("need_jd")); return; }
+  busy(btn, true); $("#tailorHint").textContent = t("tailor_wait");
+  out.innerHTML = `<div class="status">${esc(t("tailor_progress"))}</div>`;
+  try {
+    const r = await call("POST", "/api/tailor", {jd, name: $("#jobname").value, llm_check: $("#llmcheck").checked, max_pages: +$("#maxpages").value});
+    out.innerHTML = renderTailor(r); bindEvidence(r.name);
+  } catch (e) { out.innerHTML = errBox(e.message); }
+  finally { busy(btn, false); $("#tailorHint").textContent = ""; }
+});
+
+function renderTailor(r) {
+  const groups = {abgedeckt: [], umformulierbar: [], LUECKE: []};
+  r.coverage.forEach(k => groups[k.status].push(k));
+  const chips = list => list.length ? `<div class="chips">${list.map(k => `<span class="chip ${k.importance === 3 ? "must" : ""}">${esc(k.term)}</span>`).join("")}</div>` : `<p class="hint">${t("none")}</p>`;
+  const pg = n => `${n} ${n === 1 ? t("page_s") : t("page_p")}`;
+  const pdfBlock = r.pdf
+    ? `<p><a href="${r.pdf}" download="CV_${esc(r.name)}.pdf"><b>${t("download_pdf")}</b></a> (${pg(r.pages)}) · <a href="${r.tex}" download>cv.tex</a> · <a href="${r.report}" target="_blank">${t("report")}</a></p>
+       <iframe class="pdf" src="${r.pdf}?t=${Date.now()}#view=FitH" title="CV"></iframe>`
+    : `<div class="status error">${esc(t("pdf_failed"))} <a href="${r.tex}" download>cv.tex</a></div>${r.latex_error ? `<pre class="err">${esc(r.latex_error)}</pre>` : ""}`;
+  const changed = r.changed.length ? r.changed.map(c => {
+    const d = wordDiff(c.original, c.new);
+    return `<div class="proof"><div class="id">${esc(c.id)}</div><div class="before">${d.before}</div><div>${d.after}<span class="qed">∎</span></div>
+      <div class="basis">${t("allowed")} ${c.allowed_terms.map(x => `<b>${esc(x)}</b>`).join(", ") || t("only_orig")}</div></div>`;
+  }).join("") : `<p class="hint">${t("no_changes")}</p>`;
+  const evidence = r.evidence.length ? `<h3>${t("ev_title")}</h3><p class="hint">${t("ev_hint")}</p>
+    <div id="evidenceList">${r.evidence.map(p => `<div class="proof sug"><div><b>${esc(p.keyword)}</b> <span class="hint">– ${esc(p.reason)}</span></div>
+      ${p.bullets.map(b => `<label class="inline" style="margin:.4rem 0 0"><input type="checkbox" data-term="${esc(p.keyword)}" data-bullet="${esc(b.id)}"><span>${t("ev_applies")} <span class="hint">${esc(b.text)}</span></span></label>`).join("")}</div>`).join("")}</div>
+    <div class="actions"><button class="primary" id="applySyn">${t("ev_apply")}</button></div>` : "";
+  return `<div class="reveal">
+    <div class="panel"><h2>${t("cov_title")}</h2><p class="hint">${t("cov_hint")}</p>
+      <div class="cov"><div class="ok"><h3>${t("cov_ok")}</h3>${chips(groups.abgedeckt)}</div><div class="warn"><h3>${t("cov_warn")}</h3>${chips(groups.umformulierbar)}</div><div class="gap"><h3>${t("cov_gap")}</h3>${chips(groups.LUECKE)}</div></div>${evidence}</div>
+    <div class="panel"><h2>${t("changed_title")}</h2>${changed}<h3>${t("log_title")}</h3>${r.log.length ? `<ul class="log">${r.log.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : `<p class="hint">${t("log_ok")}</p>`}</div>
+    <div class="panel"><h2>${t("cv_title")}</h2>${pdfBlock}</div></div>`;
+}
+function bindEvidence(name) {
+  $("#applySyn")?.addEventListener("click", async e => {
+    const additions = [...document.querySelectorAll("#evidenceList input:checked")].map(cb => ({term: cb.dataset.term, bullet_id: cb.dataset.bullet}));
+    if (!additions.length) { alert(t("ev_none_checked")); return; }
+    busy(e.target, true);
+    try { await call("POST", "/api/synonyms", {additions}); if (!$("#jobname").value) $("#jobname").value = name; $("#runTailor").click(); }
+    catch (err) { busy(e.target, false); alert(err.message); }
+  });
+}
+
+/* ================= ADD (single) ================= */
+document.querySelectorAll(".modes button").forEach(b => b.addEventListener("click", () => setAddMode(b.dataset.mode)));
+function setAddMode(m) {
+  document.querySelectorAll(".modes button").forEach(x => x.classList.toggle("on", x.dataset.mode === m));
+  $("#addSingle").hidden = m !== "single"; $("#addImport").hidden = m !== "import";
+}
+let addState = null;
+$("#runPropose").addEventListener("click", () => { addState = {text: $("#addText").value.trim(), qa: [], rounds: 0}; propose($("#runPropose")); });
+async function propose(btn) {
+  const out = $("#addOut");
+  busy(btn, true); out.innerHTML = `<div class="status">${esc(t("add_progress"))}</div>`;
+  try {
+    const p = await call("POST", "/api/add/propose", addState);
+    addState.proposal = p;
+    out.innerHTML = p.questions.length ? renderQuestions(p) : renderProposal(p);
+    bindAdd();
+  } catch (e) { out.innerHTML = errBox(e.message); }
+  finally { busy(btn, false); }
+}
+function renderQuestions(p) {
+  return `<div class="panel reveal"><h2>${t("q_title")}</h2><p class="hint">${t("q_hint")}</p>
+    ${p.questions.map((q, i) => `<label for="q${i}">${esc(q)}</label><input type="text" id="q${i}" data-q="${esc(q)}">`).join("")}
+    <div class="actions"><button class="primary" id="sendAnswers">${t("q_send")}</button></div></div>`;
+}
+function renderProposal(p) {
+  if (!p.new_bullets.length && !p.new_skills.length && !p.new_expertise.length) return `<div class="panel reveal"><p>${t("prop_nothing")}</p></div>`;
+  const opts = sel => Object.entries(p.targets).map(([id, l]) => `<option value="${esc(id)}" ${id === sel ? "selected" : ""}>${esc(l)}</option>`).join("")
+    + `<option value="new" ${!(sel in p.targets) ? "selected" : ""}>${t("new_entry")}</option>`;
+  const cards = p.new_bullets.map((b, i) => { const c = b.new_container || {}; return `<div class="card" data-i="${i}">
+      <label for="bt${i}">${t("bullet_for_cv")}</label><textarea id="bt${i}" class="f-text short" rows="2">${esc(b.text)}</textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem"><div><label>${t("belongs_to")}</label><select class="f-target">${opts(b.target)}</select></div>
+      <div><label>${t("skills")}</label><input type="text" class="f-skills" value="${esc(b.skills.join(", "))}"></div></div>
+      <label>${t("synonyms")} <span class="hint">${t("synonyms_hint")}</span></label><input type="text" class="f-syn" value="${esc(b.synonyms.join(", "))}">
+      <div class="newcont" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-top:.6rem" ${b.target in p.targets ? "hidden" : ""}>
+        <select class="f-kind"><option value="project" ${c.kind !== "experience" ? "selected" : ""}>${t("kind_project")}</option><option value="experience" ${c.kind === "experience" ? "selected" : ""}>${t("kind_exp")}</option></select>
+        <input type="text" class="f-cname" placeholder="${t("name_ph")}" value="${esc(c.company_or_name)}"><input type="text" class="f-ctitle" placeholder="${t("role_ph")}" value="${esc(c.title)}"><input type="text" class="f-cdates" placeholder="${t("dates_ph")}" value="${esc(c.dates)}"></div>
+      <div class="actions"><button class="linkbtn f-remove">${t("discard_entry")}</button></div></div>`; }).join("");
+  const skills = p.new_skills.length ? `<h3>${t("new_skills")}</h3><p class="hint">${t("new_skills_hint")}</p>${p.new_skills.map((sk, i) => `<div style="display:grid;grid-template-columns:1fr auto;gap:.6rem;align-items:center;margin-bottom:.4rem"><span>${esc(sk.name)}</span>
+      <select class="f-skillgroup auto" data-i="${i}">${(p.skill_groups || []).map(g => `<option ${g === sk.group ? "selected" : ""}>${esc(g)}</option>`).join("")}<option value="__expertise__">${t("to_expertise")}</option><option value="__drop__">${t("discard")}</option></select></div>`).join("")}` : "";
+  const exp = p.new_expertise.length ? `<h3>${t("new_expertise")}</h3><div class="chips">${p.new_expertise.map(x => `<span class="chip">${esc(x)}</span>`).join("")}</div>` : "";
+  return `<div class="panel reveal"><h2>${t("prop_title")}</h2><p class="hint">${t("prop_hint")}</p>${cards}${skills}${exp}
+    <div class="actions"><button class="primary" id="applyAdd">${t("apply_add")}</button><button class="secondary" id="discardAdd">${t("discard_all")}</button></div></div>`;
+}
+function bindAdd() {
+  const out = $("#addOut");
+  $("#sendAnswers")?.addEventListener("click", e => {
+    out.querySelectorAll("[data-q]").forEach(inp => addState.qa.push({q: inp.dataset.q, a: inp.value.trim()}));
+    addState.rounds += 1; propose(e.target);
+  });
+  out.querySelectorAll(".f-target").forEach(sel => sel.addEventListener("change", () => sel.closest(".card").querySelector(".newcont").hidden = sel.value !== "new"));
+  out.querySelectorAll(".f-remove").forEach(b => b.addEventListener("click", () => b.closest(".card").remove()));
+  $("#discardAdd")?.addEventListener("click", () => { out.innerHTML = `<div class="empty">${t("discarded")}</div>`; });
+  $("#applyAdd")?.addEventListener("click", async e => {
+    const p = addState.proposal;
+    const bullets = [...out.querySelectorAll(".card")].map(card => { const target = card.querySelector(".f-target").value; return {
+      target, text: card.querySelector(".f-text").value.trim(), skills: splitList(card.querySelector(".f-skills").value), synonyms: splitList(card.querySelector(".f-syn").value),
+      new_container: target === "new" ? {kind: card.querySelector(".f-kind").value, company_or_name: card.querySelector(".f-cname").value, title: card.querySelector(".f-ctitle").value, dates: card.querySelector(".f-cdates").value, location: ""} : null}; });
+    const ns = [], ne = [...p.new_expertise];
+    out.querySelectorAll(".f-skillgroup").forEach(sel => { const sk = p.new_skills[sel.dataset.i];
+      if (sel.value === "__expertise__") ne.push(sk.name); else if (sel.value !== "__drop__") ns.push({...sk, group: sel.value}); });
+    busy(e.target, true);
+    try {
+      const r = await call("POST", "/api/add/apply", {text: addState.text + addState.qa.map(x => `\n${x.q} ${x.a}`).join(""), proposal: {new_bullets: bullets, new_skills: ns, new_expertise: ne}});
+      out.innerHTML = `<div class="status reveal">${esc(t("applied_n", {n: r.bullets}))}</div>`; $("#addText").value = ""; refreshState();
+    } catch (err) { busy(e.target, false); out.insertAdjacentHTML("afterbegin", errBox(err.message)); }
+  });
+}
+
+/* ================= IMPORT ================= */
+let importProp = null;
+$("#runImport").addEventListener("click", async e => {
+  const out = $("#impOut"), file = $("#impFile").files[0], text = $("#impText").value.trim();
+  if (!file && !text) { out.innerHTML = errBox(t("need_jd").replace(/Stellenanzeige|job ad/, "CV")); return; }
+  busy(e.target, true); out.innerHTML = `<div class="status">${esc(t("imp_progress"))}</div>`;
+  try {
+    const payload = {text};
+    if (file) { payload.filename = file.name; payload.b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(",")[1]); r.onerror = rej; r.readAsDataURL(file); }); }
+    importProp = await call("POST", "/api/import/propose", payload);
+    out.innerHTML = renderImport(importProp); bindImport();
+  } catch (err) { out.innerHTML = errBox(err.message); }
+  finally { busy(e.target, false); }
+});
+function renderImport(p) {
+  const nb = [...p.experience, ...p.projects].reduce((a, c) => a + (c.bullets || []).length, 0);
+  const ns = p.skill_groups.reduce((a, g) => a + g.skills.length, 0);
+  const pr = p.profile || {};
+  const list = (arr, kindLabel) => arr.map(c => `<div class="card"><div class="kind">${kindLabel}</div><b>${esc(c.company || c.name)}</b>${c.title ? " – " + esc(c.title) : ""} <span class="hint">${esc(c.dates || "")}</span>
+      <ul class="log" style="margin-top:.4rem">${(c.bullets || []).map(b => `<li>${esc(b.text)}</li>`).join("")}</ul></div>`).join("");
+  const hasData = STATE.has_entries;
+  return `<div class="panel reveal"><h2>${t("imp_found")}: ${esc((pr.first_name || "") + " " + (pr.last_name || ""))}</h2>
+    <p>${esc(t("imp_entries", {e: p.experience.length, p: p.projects.length, b: nb, s: ns}))}</p>
+    <label>${t("imp_mode")}</label>
+    <label class="inline"><input type="radio" name="impMode" value="replace" ${hasData ? "" : "checked"}> ${t("imp_replace")}</label>
+    <label class="inline"><input type="radio" name="impMode" value="merge"> ${t("imp_merge")}</label>
+    <label class="inline"><input type="radio" name="impMode" value="profile" ${hasData ? "checked" : ""}> ${t("imp_profile")}</label>
+    <div class="actions"><button class="primary" id="applyImport">${t("imp_apply")}</button></div>
+    <h3>${t("sub_entries")}</h3>${list(p.experience, t("kind_label_exp"))}${list(p.projects, t("kind_label_proj"))}</div>`;
+}
+function bindImport() {
+  $("#applyImport")?.addEventListener("click", async e => {
+    const mode = document.querySelector("input[name=impMode]:checked").value;
+    if (mode === "replace" && STATE.has_entries && !confirm(t("imp_confirm_replace"))) return;
+    busy(e.target, true);
+    try { await call("POST", "/api/import/apply", {proposal: importProp, mode}); $("#impOut").innerHTML = `<div class="status reveal">${esc(t("imp_done"))}</div>`; refreshState(); }
+    catch (err) { busy(e.target, false); $("#impOut").insertAdjacentHTML("afterbegin", errBox(err.message)); }
+  });
+}
+
+/* ================= EDIT: sub tabs ================= */
+let currentSub = "entries";
+document.querySelectorAll(".subtabs button").forEach(b => b.addEventListener("click", () => showSub(b.dataset.sub)));
+function showSub(s) {
+  currentSub = s;
+  document.querySelectorAll(".subtabs button").forEach(x => x.classList.toggle("on", x.dataset.sub === s));
+  ["entries", "profile", "skills", "json"].forEach(x => $("#sub-" + x).hidden = x !== s);
+  ({entries: loadEntries, profile: loadProfile, skills: loadSkills, json: loadFacts})[s]();
+}
+
+/* ================= EDIT: entries ================= */
+let ENT = {experience: [], projects: []};
+async function loadEntries() {
+  try { ENT = await call("GET", "/api/entries"); drawEntries(); } catch (e) { $("#entriesList").innerHTML = errBox(e.message); }
+}
+const cName = (kind, c) => kind === "experience" ? c.company : c.name;
+function dupGroups() {
+  const out = [];
+  for (const kind of ["experience", "projects"]) {
+    const seen = {};
+    ENT[kind].forEach((c, i) => { const k = normName(cName(kind, c)); if (!k) return; (seen[k] = seen[k] || []).push(i); });
+    Object.values(seen).filter(ix => ix.length > 1).forEach(ix => out.push({kind, ix}));
+  }
+  return out;
+}
+function drawEntries() {
+  const dups = dupGroups();
+  $("#dupBanner").innerHTML = dups.length ? `<div class="status warn">${esc(t("dup_found", {names: dups.map(d => `„${cName(d.kind, ENT[d.kind][d.ix[0]])}“ (${d.ix.length}×)`).join(", ")}))}
+      <div class="actions" style="margin-top:.5rem"><button class="primary" id="mergeDups">${t("dup_merge")}</button></div></div>` : "";
+  $("#mergeDups")?.addEventListener("click", () => {
+    dupGroups().forEach(({kind, ix}) => { const keep = ENT[kind][ix[0]]; ix.slice(1).forEach(i => keep.bullets.push(...ENT[kind][i].bullets)); ix.slice(1).forEach(i => ENT[kind][i] = null); });
+    for (const k of ["experience", "projects"]) ENT[k] = ENT[k].filter(Boolean);
+    drawEntries();
+  });
+  const all = [...ENT.experience.map((c, i) => ["experience", i, c]), ...ENT.projects.map((c, i) => ["projects", i, c])];
+  if (!all.length) { $("#entriesList").innerHTML = `<p class="hint">${t("no_entries")}</p>`; return; }
+  const moveOpts = (kind, i) => `<option value="">${t("move_to")}</option>` + all.filter(([k, j]) => !(k === kind && j === i))
+    .map(([k, j, c]) => `<option value="${k}:${j}">${esc(cName(k, c) || "?")}${c.dates ? " (" + esc(c.dates) + ")" : ""}</option>`).join("");
+  const field = (kind, i, key, label) => `<div><label>${label}</label><input type="text" data-c="${kind}:${i}" data-k="${key}" value="${esc(ENT[kind][i][key] || "")}"></div>`;
+  $("#entriesList").innerHTML = all.map(([kind, i, c]) => {
+    const isExp = kind === "experience";
+    const head = isExp
+      ? `<div class="head">${field(kind, i, "company", t("company"))}${field(kind, i, "title", t("title"))}${field(kind, i, "dates", t("dates"))}${field(kind, i, "location", t("location"))}`
+      : `<div class="head proj">${field(kind, i, "name", t("project_name"))}${field(kind, i, "dates", t("dates"))}`;
+    const tools = `<div class="tools"><button class="iconbtn c-mv" data-c="${kind}:${i}" data-d="-1" title="${t("up")}">↑</button><button class="iconbtn c-mv" data-c="${kind}:${i}" data-d="1" title="${t("down")}">↓</button><button class="iconbtn c-del" data-c="${kind}:${i}" title="${t("del_entry")}">✕</button></div></div>`;
+    const bullets = c.bullets.map((b, j) => `<div class="bul">
+        <div><textarea class="short" rows="2" data-b="${kind}:${i}:${j}" data-k="text">${esc(b.text)}</textarea>
+          <div class="meta"><label class="mini"><span>${t("skills")}</span><input type="text" data-b="${kind}:${i}:${j}" data-k="skills" value="${esc((b.skills || []).join(", "))}" placeholder="${t("comma_hint")}"></label>
+            <label class="mini"><span>${t("synonyms")}</span><input type="text" data-b="${kind}:${i}:${j}" data-k="synonyms" value="${esc((b.synonyms || []).join(", "))}" placeholder="${t("comma_hint")}"></label>
+            <label class="mini"><span>&nbsp;</span><select class="b-move" data-b="${kind}:${i}:${j}">${moveOpts(kind, i)}</select></label></div></div>
+        <div class="side"><button class="iconbtn b-mv" data-b="${kind}:${i}:${j}" data-d="-1" title="${t("up")}">↑</button><button class="iconbtn b-mv" data-b="${kind}:${i}:${j}" data-d="1" title="${t("down")}">↓</button><button class="iconbtn b-del" data-b="${kind}:${i}:${j}" title="${t("delete")}">✕</button></div></div>`).join("");
+    return `<div class="card"><div class="kind">${isExp ? t("kind_label_exp") : t("kind_label_proj")}</div>${head}${tools}${bullets}
+      <div class="actions" style="margin-top:.4rem"><button class="secondary b-add" data-c="${kind}:${i}">${t("add_bullet")}</button></div></div>`;
+  }).join("");
+  const L = $("#entriesList"), ref = s => s.split(":").map((x, n) => n ? +x : x);
+  L.querySelectorAll("input[data-c]").forEach(el => el.addEventListener("input", () => { const [k, i] = ref(el.dataset.c); ENT[k][i][el.dataset.k] = el.value; }));
+  L.querySelectorAll("[data-b][data-k]").forEach(el => el.addEventListener("input", () => { const [k, i, j] = ref(el.dataset.b); const b = ENT[k][i].bullets[j];
+    b[el.dataset.k] = el.dataset.k === "text" ? el.value : splitList(el.value); }));
+  L.querySelectorAll(".c-mv").forEach(el => el.addEventListener("click", () => { const [k, i] = ref(el.dataset.c), j = i + +el.dataset.d; if (j < 0 || j >= ENT[k].length) return; [ENT[k][i], ENT[k][j]] = [ENT[k][j], ENT[k][i]]; drawEntries(); }));
+  L.querySelectorAll(".c-del").forEach(el => el.addEventListener("click", () => { if (!confirm(t("del_entry_confirm"))) return; const [k, i] = ref(el.dataset.c); ENT[k].splice(i, 1); drawEntries(); }));
+  L.querySelectorAll(".b-mv").forEach(el => el.addEventListener("click", () => { const [k, i, j] = ref(el.dataset.b), arr = ENT[k][i].bullets, n = j + +el.dataset.d; if (n < 0 || n >= arr.length) return; [arr[j], arr[n]] = [arr[n], arr[j]]; drawEntries(); }));
+  L.querySelectorAll(".b-del").forEach(el => el.addEventListener("click", () => { const [k, i, j] = ref(el.dataset.b); ENT[k][i].bullets.splice(j, 1); drawEntries(); }));
+  L.querySelectorAll(".b-add").forEach(el => el.addEventListener("click", () => { const [k, i] = ref(el.dataset.c); ENT[k][i].bullets.push({text: "", skills: [], synonyms: []}); drawEntries(); }));
+  L.querySelectorAll(".b-move").forEach(el => el.addEventListener("change", () => { if (!el.value) return; const [k, i, j] = ref(el.dataset.b), [tk, ti] = ref(el.value);
+    const [b] = ENT[k][i].bullets.splice(j, 1); ENT[tk][ti].bullets.push(b); drawEntries(); }));
+}
+$("#addExp").addEventListener("click", () => { ENT.experience.push({company: "", title: "", dates: "", location: "", bullets: [{text: "", skills: [], synonyms: []}]}); drawEntries(); });
+$("#addProj").addEventListener("click", () => { ENT.projects.push({name: "", dates: "", bullets: [{text: "", skills: [], synonyms: []}]}); drawEntries(); });
+$("#saveEntries").addEventListener("click", async e => {
+  busy(e.target, true);
+  try { await call("PUT", "/api/entries", ENT); flash($("#entriesHint"), t("saved")); await loadEntries(); refreshState(); }
+  catch (err) { $("#entriesHint").textContent = err.message; }
+  finally { busy(e.target, false); }
+});
+
+/* ================= EDIT: profile ================= */
+let PROF = null;
+const PROFILE_LISTS = {
+  pContacts: ["contacts", [["text", "f_text"], ["url", "f_url"]], "2fr 3fr auto"],
+  pEdu: ["education", [["school", "f_school"], ["degree", "f_degree"], ["location", "f_location"], ["note_prefix", "f_note_prefix"], ["note", "f_note"], ["note_url", "f_note_url"]], "repeat(3, 1fr)"],
+  pCerts: ["certifications", [["name", "f_name"], ["url", "f_url"]], "2fr 3fr auto"],
+  pLangs: ["languages", [["name", "f_name"], ["level", "f_level"]], "1fr 1fr auto"],
+};
+async function loadProfile() {
+  try { PROF = await call("GET", "/api/profile"); $("#pFirst").value = PROF.first_name || ""; $("#pLast").value = PROF.last_name || ""; Object.keys(PROFILE_LISTS).forEach(drawList); }
+  catch (e) { $("#profileHint").textContent = e.message; }
+}
+function drawList(elId) {
+  const [key, fields, cols] = PROFILE_LISTS[elId], rows = PROF[key] = PROF[key] || [];
+  $("#" + elId).innerHTML = rows.map((r, i) => `<div class="row ${fields.length > 3 ? "multi" : ""}" style="grid-template-columns:${cols}">${fields.map(([f, l]) => `<input type="text" data-l="${elId}" data-i="${i}" data-f="${f}" value="${esc(r[f] || "")}" placeholder="${t(l)}" title="${t(l)}">`).join("")}
+      <button class="iconbtn" data-rm="${elId}" data-i="${i}" title="${t("delete")}">✕</button></div>`).join("") + `<button class="secondary" data-addrow="${elId}">${t("add_row")}</button>`;
+  const box = $("#" + elId);
+  box.querySelectorAll("input").forEach(el => el.addEventListener("input", () => { rows[+el.dataset.i][el.dataset.f] = el.value; }));
+  box.querySelectorAll("[data-rm]").forEach(el => el.addEventListener("click", () => { rows.splice(+el.dataset.i, 1); drawList(elId); }));
+  box.querySelector("[data-addrow]").addEventListener("click", () => { rows.push({}); drawList(elId); });
+}
+$("#saveProfile").addEventListener("click", async e => {
+  PROF.first_name = $("#pFirst").value; PROF.last_name = $("#pLast").value;
+  busy(e.target, true);
+  try { await call("PUT", "/api/profile", PROF); flash($("#profileHint"), t("saved")); refreshState(); }
+  catch (err) { $("#profileHint").textContent = err.message; }
+  finally { busy(e.target, false); }
+});
+
+/* ================= EDIT: skills ================= */
+let skillData = null;
+async function loadSkills() { try { skillData = await call("GET", "/api/skills"); drawSkills(); } catch (e) { $("#skillsHint").textContent = e.message; } }
+function drawSkills() {
+  const {groups, rows} = skillData;
+  const special = [["__expertise__", t("to_expertise")], ["__delete__", t("delete")]];
+  let html = `<tr><th>${t("sk_skill")}</th><th>${t("sk_group")}</th><th>${t("sk_pin")}</th><th>${t("sk_hide")}</th><th>${t("sk_order")}</th></tr>`;
+  groups.forEach(g => {
+    html += `<tr class="grouphead"><td colspan="5">${esc(g)}</td></tr>`;
+    rows.forEach((r, i) => { if (r.group !== g) return;
+      const opts = groups.map(x => [x, x]).concat(special).map(([v, l]) => `<option value="${esc(v)}" ${v === r.group ? "selected" : ""}>${esc(l)}</option>`).join("");
+      html += `<tr class="${r.pinned ? "pin" : ""}"><td>${esc(r.name)}</td><td><select data-i="${i}" class="s-group">${opts}</select></td>
+        <td class="c"><input type="checkbox" class="s-pin" data-i="${i}" ${r.pinned ? "checked" : ""} aria-label="${t("sk_pin")}"></td>
+        <td class="c"><input type="checkbox" class="s-hid" data-i="${i}" ${r.hidden ? "checked" : ""} ${r.pinned ? "disabled" : ""} aria-label="${t("sk_hide")}"></td>
+        <td><button class="iconbtn mv" data-i="${i}" data-d="-1">↑</button> <button class="iconbtn mv" data-i="${i}" data-d="1">↓</button></td></tr>`; });
+  });
+  const T = $("#skillTable"); T.innerHTML = html;
+  T.querySelectorAll(".s-group").forEach(el => el.addEventListener("change", () => { rows[el.dataset.i].group = el.value; if (el.value.startsWith("__")) el.closest("tr").style.opacity = .45; else drawSkills(); }));
+  T.querySelectorAll(".s-pin").forEach(el => el.addEventListener("change", () => { rows[el.dataset.i].pinned = el.checked; if (el.checked) rows[el.dataset.i].hidden = false; drawSkills(); }));
+  T.querySelectorAll(".s-hid").forEach(el => el.addEventListener("change", () => { rows[el.dataset.i].hidden = el.checked; }));
+  T.querySelectorAll(".mv").forEach(el => el.addEventListener("click", () => { const i = +el.dataset.i, d = +el.dataset.d, g = rows[i].group; let j = i + d;
+    while (j >= 0 && j < rows.length && rows[j].group !== g) j += d; if (j < 0 || j >= rows.length) return; [rows[i], rows[j]] = [rows[j], rows[i]]; drawSkills(); }));
+}
+$("#saveSkills").addEventListener("click", async e => {
+  busy(e.target, true);
+  try { const r = await call("PUT", "/api/skills", {rows: skillData.rows, groups: skillData.groups}); flash($("#skillsHint"), t("saved") + (r.moved_to_expertise ? " " + t("sk_moved", {n: r.moved_to_expertise}) : "")); await loadSkills(); }
+  catch (err) { $("#skillsHint").textContent = err.message; }
+  finally { busy(e.target, false); }
+});
+
+/* ================= EDIT: raw JSON ================= */
+async function loadFacts() { try { $("#factsEditor").value = (await call("GET", "/api/facts")).text; } catch (e) { $("#factsHint").textContent = e.message; } }
+$("#reloadFacts").addEventListener("click", loadFacts);
+$("#saveFacts").addEventListener("click", async e => {
+  busy(e.target, true);
+  try { await call("PUT", "/api/facts", {text: $("#factsEditor").value}); flash($("#factsHint"), t("saved")); refreshState(); }
+  catch (err) { $("#factsHint").textContent = err.message; }
+  finally { busy(e.target, false); }
+});
+
+/* ================= HISTORY ================= */
+async function loadHistory() {
+  const out = $("#historyOut");
+  try { const rows = await call("GET", "/api/history");
+    out.innerHTML = rows.length ? `<ul>${rows.map(r => `<li><b>${esc(r.name)}</b>${r.pdf ? ` · <a href="${r.pdf}" target="_blank">PDF</a>` : ""}${r.report ? ` · <a href="${r.report}" target="_blank">${t("report")}</a>` : ""}<div class="jd">${esc(r.jd)}${r.jd.length >= 200 ? " …" : ""}</div></li>`).join("")}</ul>` : `<p class="hint">${t("history_empty")}</p>`;
+  } catch (e) { out.innerHTML = errBox(e.message); }
+}
+
+/* ================= SETTINGS ================= */
+async function loadSettings() {
+  try { const s = await call("GET", "/api/settings");
+    $("#sModel").value = s.model || ""; $("#sPages").value = String(s.max_pages || 2); $("#sKey").value = "";
+    $("#sKey").placeholder = s.api_key_set ? t("set_key_set", {h: s.api_key_hint}) : "sk-ant-…";
+    $("#dataDir").textContent = t("data_dir", {d: STATE.data_dir || ""});
+  } catch (e) { $("#settingsHint").textContent = e.message; }
+}
+$("#saveSettings").addEventListener("click", async e => {
+  busy(e.target, true);
+  try { await call("PUT", "/api/settings", {api_key: $("#sKey").value.trim() || null, model: $("#sModel").value.trim() || null, max_pages: +$("#sPages").value});
+    flash($("#settingsHint"), t("saved")); await loadSettings(); refreshState(); }
+  catch (err) { $("#settingsHint").textContent = err.message; }
+  finally { busy(e.target, false); }
+});
+$("#runDiagnose").addEventListener("click", async e => {
+  const out = $("#setupOut"); busy(e.target, true); out.innerHTML = "";
+  try { const r = await call("POST", "/api/diagnose");
+    out.innerHTML = `<ul class="checks">${r.checks.map(c => `<li><span class="mark ${c.ok ? "yes" : "no"}">${c.ok ? "✓" : "✗"}</span><b>${esc(c.name)}</b>${c.ok ? `<div class="hint">${esc(c.detail)}</div>` : `<pre class="err">${esc(c.detail)}</pre>`}</li>`).join("")}</ul>
+      ${r.pdf ? `<h3>${t("diag_test")}</h3><iframe class="pdf" src="${r.pdf}?t=${Date.now()}#view=FitH" title="CV"></iframe>` : ""}`;
+  } catch (err) { out.innerHTML = errBox(err.message); }
+  finally { busy(e.target, false); }
+});
+$("#getTectonic").addEventListener("click", async e => {
+  busy(e.target, true);
+  try { const r = await call("POST", "/api/tectonic"); $("#setupOut").innerHTML = `<div class="status">${esc(t("tectonic_ok", {p: r.path}))}</div>`; }
+  catch (err) { $("#setupOut").innerHTML = errBox(err.message); }
+  finally { busy(e.target, false); }
+});
+
+/* start */
+applyI18n(); refreshState().then(() => { if (!STATE.has_key) showTab("settings"); else if (!STATE.has_entries) { showTab("add"); setAddMode("import"); } });
+</script>
+</body>
+</html>

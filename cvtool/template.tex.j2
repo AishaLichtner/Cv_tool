@@ -1,0 +1,121 @@
+\documentclass[]{deedy-resume-openfont}
+% cvtool template 11: alle Inhalte kommen aus data/facts.json.
+% Spalten (paracol) duerfen ueber Seiten umbrechen; jeder Block (cvblock) bleibt zusammen.
+\usepackage{graphicx}
+\usepackage{paracol}
+\setlength{\columnsep}{0.08\textwidth}
+\columnratio{0.333}
+\globalcounter*
+\newenvironment{cvblock}{\par\noindent\begin{minipage}[t]{\linewidth}}{\end{minipage}\par}
+
+\begin{document}
+
+\BLOCK{if profile.first_name or profile.last_name}
+\vfill
+\begin{center}
+    \namesection{\VAR{profile.first_name|tex}}{\VAR{profile.last_name|tex}}{
+\BLOCK{for c in profile.contacts if c.text}
+      \BLOCK{if c.url}\href{\VAR{c.url|texurl}}{\VAR{c.text|tex}}\BLOCK{else}\VAR{c.text|tex}\BLOCK{endif}\BLOCK{if not loop.last} | \BLOCK{endif}
+\BLOCK{endfor}
+    }
+\end{center}
+\BLOCK{endif}
+
+\begin{paracol}{2}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  LEFT COLUMN
+
+\BLOCK{for e in profile.education if e.school}
+\begin{cvblock}
+\BLOCK{if loop.first}\section{Education}
+\BLOCK{endif}
+\subsection{\VAR{e.school|tex}}
+\BLOCK{if e.degree}\descript{\VAR{e.degree|tex}}
+\BLOCK{endif}
+\BLOCK{if e.location}\location{\VAR{e.location|tex}}
+\BLOCK{endif}
+\BLOCK{if e.note}\VAR{e.note_prefix|tex} \BLOCK{if e.note_url}\href{\VAR{e.note_url|texurl}}{\VAR{e.note|tex}}\BLOCK{else}\VAR{e.note|tex}\BLOCK{endif}
+
+\BLOCK{endif}
+\sectionsep
+\sectionsep
+\end{cvblock}
+\BLOCK{endfor}
+
+\BLOCK{set certs = profile.certifications|selectattr("name")|list}
+\BLOCK{if certs}
+\begin{cvblock}
+\section{Certifications}
+\BLOCK{for c in certs}
+\textbf{\VAR{c.name|tex}}\BLOCK{if c.url} {\href{\VAR{c.url|texurl}}{[link]}}\BLOCK{endif}\\
+\sectionsep
+\BLOCK{endfor}
+\end{cvblock}
+\BLOCK{endif}
+
+\BLOCK{for group in skill_groups if group.skills}
+\begin{cvblock}
+\BLOCK{if loop.first}\section{Skills}
+\BLOCK{endif}
+\subsection{\VAR{group.name|tex}}
+\VAR{group.skills|map('tex')|join(' \\textbullet{} ')}
+\sectionsep
+\end{cvblock}
+\BLOCK{endfor}
+
+\BLOCK{set langs = profile.languages|selectattr("name")|list}
+\BLOCK{if langs}
+\begin{cvblock}
+\subsection{Spoken Languages}
+\BLOCK{for l in langs}\VAR{l.name|tex}\BLOCK{if l.level} - \VAR{l.level|tex}\BLOCK{endif}\BLOCK{if not loop.last} \textbullet{} \BLOCK{endif}\BLOCK{endfor}
+
+\end{cvblock}
+\BLOCK{endif}
+
+\switchcolumn
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  RIGHT COLUMN
+
+\BLOCK{if expertise}
+\begin{cvblock}
+\section{Areas of Expertise}
+\VAR{expertise|map('tex')|join(' \\textbullet{} ')}
+
+\sectionsep
+\end{cvblock}
+\BLOCK{endif}
+
+\BLOCK{for exp in experience if exp.bullets}
+\begin{cvblock}
+\BLOCK{if loop.first}\section{Experience}
+\BLOCK{endif}
+\runsubsection{\VAR{exp.company|tex}}
+\BLOCK{if exp.title}\descript{| \VAR{exp.title|tex} }
+\BLOCK{endif}
+\location{\VAR{exp.dates|tex}\BLOCK{if exp.location} | \VAR{exp.location|tex}\BLOCK{endif}}
+\sectionsep
+\begin{tightemize}
+\BLOCK{for b in exp.bullets}
+    \item \VAR{b|tex}
+\BLOCK{endfor}
+\end{tightemize}
+\sectionsep
+\end{cvblock}
+\BLOCK{endfor}
+
+\BLOCK{for p in projects if p.bullets}
+\begin{cvblock}
+\BLOCK{if loop.first}\section{Projects}
+\BLOCK{endif}
+\runsubsection{\VAR{p.name|tex}}
+\location{\VAR{p.dates|tex}}
+\sectionsep
+\begin{tightemize}
+\BLOCK{for b in p.bullets}
+    \item \VAR{b|tex}
+\BLOCK{endfor}
+\end{tightemize}
+\sectionsep
+\end{cvblock}
+\BLOCK{endfor}
+
+\end{paracol}
+\end{document}
